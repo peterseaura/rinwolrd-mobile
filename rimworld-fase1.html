@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RimWorld Mobile — Fase 1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a12;
+    color: #c8b97a;
+    font-family: 'Courier New', monospace;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    background: #111109;
+    border-bottom: 1px solid #3a3520;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: #7a6e44;
+    flex-shrink: 0;
+  }
+  #topbar span { color: #c8b97a; font-weight: bold; }
+  #topbar .title { color: #e8d48a; font-size: 13px; letter-spacing: 2px; margin-right: auto; }
+  #day-counter { color: #a09060; }
+
+  /* ── CANVAS WRAPPER ── */
+  #game-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #1a1a12;
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* ── BOTTOM PANEL ── */
+  #panel {
+    background: #111109;
+    border-top: 1px solid #3a3520;
+    padding: 8px 12px;
+    min-height: 64px;
+    flex-shrink: 0;
+  }
+  #panel-title {
+    font-size: 10px;
+    color: #5a5030;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  #panel-content {
+    font-size: 12px;
+    color: #a09060;
+    line-height: 1.5;
+  }
+  #panel-content .name { color: #e8d48a; font-weight: bold; }
+  #panel-content .stat { color: #8ab87a; }
+  #panel-content .hint { color: #4a4428; font-size: 11px; }
+
+  /* ── SPEED CONTROLS ── */
+  #speed-bar {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #0e0e09;
+    border-top: 1px solid #2a2515;
+    flex-shrink: 0;
+  }
+  .speed-btn {
+    background: #1e1e12;
+    border: 1px solid #3a3520;
+    color: #7a6e44;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .speed-btn.active { background: #3a3020; border-color: #c8b97a; color: #e8d48a; }
+  .speed-btn:active { background: #2a2518; }
+  #tick-label { color: #3a3520; font-size: 10px; margin-left: auto; align-self: center; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="title">RIM COLONY</div>
+  <div id="day-counter">Dia <span id="day">1</span></div>
+  <div>Colônos: <span id="pop">3</span></div>
+</div>
+
+<div id="game-area">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="panel">
+  <div id="panel-title">seleção</div>
+  <div id="panel-content">
+    <span class="hint">Toque em um colôno para selecioná-lo,<br>depois toque no mapa para movê-lo.</span>
+  </div>
+</div>
+
+<div id="speed-bar">
+  <button class="speed-btn" id="btn-pause" onclick="setSpeed(0)">⏸</button>
+  <button class="speed-btn active" id="btn-1x" onclick="setSpeed(1)">▶ 1x</button>
+  <button class="speed-btn" id="btn-3x" onclick="setSpeed(3)">▶▶ 3x</button>
+  <span id="tick-label">tick <span id="tick">0</span></span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIGURAÇÃO DO MAPA
+// ═══════════════════════════════════════════
+const TILE = 36;          // tamanho de cada célula em px
+const COLS = 20;
+const ROWS = 20;
+
+// Tipos de terreno
+const T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, TREE: 4 };
+
+const TERRAIN_COLOR = {
+  [T.GRASS]: '#2d3d1a',
+  [T.DIRT]:  '#3d2e1a',
+  [T.WATER]: '#1a2a3d',
+  [T.ROCK]:  '#2d2d2d',
+  [T.TREE]:  '#1d3012',
+};
+const TERRAIN_BORDER = {
+  [T.GRASS]: '#354820',
+  [T.DIRT]:  '#4a3820',
+  [T.WATER]: '#1e3450',
+  [T.ROCK]:  '#383838',
+  [T.TREE]:  '#243a18',
+};
+
+// ═══════════════════════════════════════════
+//  GERAÇÃO DO MAPA
+// ═══════════════════════════════════════════
+function genMap() {
+  const map = [];
+  for (let r = 0; r < ROWS; r++) {
+    map[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      const rnd = Math.random();
+      if (rnd < 0.60)      map[r][c] = T.GRASS;
+      else if (rnd < 0.75) map[r][c] = T.DIRT;
+      else if (rnd < 0.82) map[r][c] = T.TREE;
+      else if (rnd < 0.88) map[r][c] = T.ROCK;
+      else                 map[r][c] = T.WATER;
+    }
+  }
+  // Lago pequeno no centro
+  for (let dr = -2; dr <= 2; dr++)
+    for (let dc = -2; dc <= 2; dc++)
+      if (Math.abs(dr)+Math.abs(dc) <= 3)
+        map[Math.floor(ROWS/2)+dr][Math.floor(COLS/2)+dc] = T.WATER;
+  return map;
+}
+
+const map = genMap();
+
+function walkable(r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+  return map[r][c] !== T.WATER && map[r][c] !== T.ROCK;
+}
+
+// ═══════════════════════════════════════════
+//  PATHFINDING (A* simples)
+// ═══════════════════════════════════════════
+function heuristic(a, b) {
+  return Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+}
+
+function astar(sr, sc, er, ec) {
+  if (!walkable(er, ec)) return [];
+  const key = (r,c) => r*100+c;
+  const open = [{ r: sr, c: sc, g: 0, f: heuristic({r:sr,c:sc},{r:er,c:ec}), from: null }];
+  const visited = new Map();
+  visited.set(key(sr,sc), { g:0, from:null });
+
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+
+  while (open.length) {
+    open.sort((a,b)=>a.f-b.f);
+    const cur = open.shift();
+    if (cur.r === er && cur.c === ec) {
+      // reconstrói caminho
+      const path = [];
+      let node = { r: er, c: ec };
+      while (node) {
+        path.unshift(node);
+        node = visited.get(key(node.r, node.c)).from;
+      }
+      return path.slice(1); // exclui posição inicial
+    }
+    for (const [dr,dc] of dirs) {
+      const nr = cur.r+dr, nc = cur.c+dc;
+      if (!walkable(nr,nc)) continue;
+      const g = cur.g + (dr!==0&&dc!==0 ? 1.4 : 1);
+      const k = key(nr,nc);
+      if (!visited.has(k) || visited.get(k).g > g) {
+        visited.set(k, { g, from: { r: cur.r, c: cur.c } });
+        open.push({ r:nr, c:nc, g, f: g + heuristic({r:nr,c:nc},{r:er,c:ec}) });
+      }
+    }
+  }
+  return [];
+}
+
+// ═══════════════════════════════════════════
+//  COLÔNOS
+// ═══════════════════════════════════════════
+const NAMES = ['Ana','Bob','Cara','Davi','Eli','Fran'];
+const COLORS = ['#e87a60','#60b8e8','#a0e860','#e8c060','#c060e8','#60e8c0'];
+
+function makeColonist(name, r, c, color) {
+  return { name, r, c, color, path: [], px: c*TILE+TILE/2, py: r*TILE+TILE/2, selected: false, job: 'Ocioso' };
+}
+
+const colonists = [
+  makeColonist(NAMES[0], 2, 2, COLORS[0]),
+  makeColonist(NAMES[1], 3, 4, COLORS[1]),
+  makeColonist(NAMES[2], 4, 2, COLORS[2]),
+];
+
+let selected = null;
+
+// ═══════════════════════════════════════════
+//  CÂMERA / PAN
+// ═══════════════════════════════════════════
+let cam = { x: 0, y: 0 };
+let drag = { active: false, sx: 0, sy: 0, cx: 0, cy: 0, moved: false };
+
+function clampCam() {
+  const maxX = COLS * TILE - canvas.width;
+  const maxY = ROWS * TILE - canvas.height;
+  cam.x = Math.max(0, Math.min(cam.x, maxX > 0 ? maxX : 0));
+  cam.y = Math.max(0, Math.min(cam.y, maxY > 0 ? maxY : 0));
+}
+
+// ═══════════════════════════════════════════
+//  CANVAS SETUP
+// ═══════════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const gameArea = document.getElementById('game-area');
+
+function resizeCanvas() {
+  canvas.width = gameArea.clientWidth;
+  canvas.height = gameArea.clientHeight;
+  clampCam();
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ═══════════════════════════════════════════
+//  INPUT (Touch & Mouse)
+// ═══════════════════════════════════════════
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches) {
+    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+  }
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function worldToTile(wx, wy) {
+  return { r: Math.floor(wy / TILE), c: Math.floor(wx / TILE) };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  const pos = getPos(e);
+  drag = { active: true, sx: pos.x, sy: pos.y, cx: cam.x, cy: cam.y, moved: false };
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!drag.active) return;
+  const pos = getPos(e);
+  const dx = pos.x - drag.sx;
+  const dy = pos.y - drag.sy;
+  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.moved = true;
+  if (drag.moved) {
+    cam.x = drag.cx - dx;
+    cam.y = drag.cy - dy;
+    clampCam();
+  }
+});
+
+canvas.addEventListener('pointerup', e => {
+  if (!drag.active) return;
+  drag.active = false;
+  if (drag.moved) return; // foi pan, não clique
+
+  const pos = getPos(e);
+  const wx = pos.x + cam.x;
+  const wy = pos.y + cam.y;
+  const { r, c } = worldToTile(wx, wy);
+
+  // Clicou em colôno?
+  let hit = null;
+  for (const col of colonists) {
+    if (col.r === r && col.c === c) { hit = col; break; }
+  }
+
+  if (hit) {
+    colonists.forEach(col => col.selected = false);
+    hit.selected = true;
+    selected = hit;
+    updatePanel(hit);
+  } else if (selected) {
+    // Move colôno selecionado
+    if (walkable(r, c)) {
+      selected.path = astar(selected.r, selected.c, r, c);
+      selected.job = 'Caminhando';
+      updatePanel(selected);
+    }
+  } else {
+    selected = null;
+    colonists.forEach(col => col.selected = false);
+    showDefaultPanel();
+  }
+});
+
+// ═══════════════════════════════════════════
+//  PAINEL
+// ═══════════════════════════════════════════
+function updatePanel(col) {
+  document.getElementById('panel-title').textContent = 'colôno selecionado';
+  document.getElementById('panel-content').innerHTML =
+    `<span class="name">${col.name}</span> &nbsp;·&nbsp; <span class="stat">${col.job}</span><br>
+     <span class="hint">Toque no mapa para mover · Toque em outro colôno para trocar</span>`;
+}
+function showDefaultPanel() {
+  document.getElementById('panel-title').textContent = 'seleção';
+  document.getElementById('panel-content').innerHTML =
+    `<span class="hint">Toque em um colôno para selecioná-lo,<br>depois toque no mapa para movê-lo.</span>`;
+}
+
+// ═══════════════════════════════════════════
+//  LÓGICA DE MOVIMENTO
+// ═══════════════════════════════════════════
+const SPEED = 3; // pixels por tick
+
+function updateColonists() {
+  for (const col of colonists) {
+    if (col.path.length === 0) {
+      if (col.job === 'Caminhando') {
+        col.job = 'Ocioso';
+        if (col.selected) updatePanel(col);
+      }
+      continue;
+    }
+    const next = col.path[0];
+    const tx = next.c * TILE + TILE / 2;
+    const ty = next.r * TILE + TILE / 2;
+    const dx = tx - col.px;
+    const dy = ty - col.py;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < SPEED) {
+      col.px = tx; col.py = ty;
+      col.r = next.r; col.c = next.c;
+      col.path.shift();
+    } else {
+      col.px += (dx/dist)*SPEED;
+      col.py += (dy/dist)*SPEED;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+//  RENDERIZAÇÃO
+// ═══════════════════════════════════════════
+function drawTile(r, c) {
+  const type = map[r][c];
+  const x = c * TILE - cam.x;
+  const y = r * TILE - cam.y;
+
+  ctx.fillStyle = TERRAIN_COLOR[type];
+  ctx.fillRect(x, y, TILE, TILE);
+
+  ctx.strokeStyle = TERRAIN_BORDER[type];
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(x+0.5, y+0.5, TILE-1, TILE-1);
+
+  // Detalhes visuais por tipo
+  if (type === T.TREE) {
+    ctx.fillStyle = '#2a4a18';
+    ctx.beginPath();
+    ctx.arc(x+TILE/2, y+TILE/2, TILE*0.28, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#1d3510';
+    ctx.beginPath();
+    ctx.arc(x+TILE/2-3, y+TILE/2-3, TILE*0.14, 0, Math.PI*2);
+    ctx.fill();
+  }
+  if (type === T.ROCK) {
+    ctx.fillStyle = '#404040';
+    ctx.beginPath();
+    ctx.ellipse(x+TILE/2, y+TILE*0.6, TILE*0.28, TILE*0.22, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+  if (type === T.WATER) {
+    ctx.fillStyle = 'rgba(30,80,140,0.3)';
+    ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
+  }
+}
+
+function drawColonist(col) {
+  const sx = col.px - cam.x;
+  const sy = col.py - cam.y;
+
+  // Sombra
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy+10, 7, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Anel de seleção
+  if (col.selected) {
+    ctx.strokeStyle = '#e8d48a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 13, 0, Math.PI*2);
+    ctx.stroke();
+    // Destaque pulsante (estático)
+    ctx.strokeStyle = 'rgba(232,212,138,0.25)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 16, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Corpo
+  ctx.fillStyle = col.color;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 9, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Rosto (ponto)
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.arc(sx-2, sy-2, 2, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(sx+2, sy-2, 2, 0, Math.PI*2);
+  ctx.fill();
+
+  // Nome
+  ctx.fillStyle = col.selected ? '#e8d48a' : '#9a8c60';
+  ctx.font = `bold 9px 'Courier New'`;
+  ctx.textAlign = 'center';
+  ctx.fillText(col.name, sx, sy - 14);
+}
+
+function drawPath(col) {
+  if (!col.selected || col.path.length === 0) return;
+  ctx.strokeStyle = 'rgba(232,212,138,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.moveTo(col.px - cam.x, col.py - cam.y);
+  for (const step of col.path) {
+    ctx.lineTo(step.c * TILE + TILE/2 - cam.x, step.r * TILE + TILE/2 - cam.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Destino
+  const last = col.path[col.path.length - 1];
+  const dx = last.c * TILE + TILE/2 - cam.x;
+  const dy = last.r * TILE + TILE/2 - cam.y;
+  ctx.strokeStyle = 'rgba(232,212,138,0.7)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(dx-5, dy-5); ctx.lineTo(dx+5, dy+5);
+  ctx.moveTo(dx+5, dy-5); ctx.lineTo(dx-5, dy+5);
+  ctx.stroke();
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Culling: só desenha tiles visíveis
+  const startC = Math.max(0, Math.floor(cam.x / TILE));
+  const endC   = Math.min(COLS-1, Math.ceil((cam.x + canvas.width)  / TILE));
+  const startR = Math.max(0, Math.floor(cam.y / TILE));
+  const endR   = Math.min(ROWS-1, Math.ceil((cam.y + canvas.height) / TILE));
+
+  for (let r = startR; r <= endR; r++)
+    for (let c = startC; c <= endC; c++)
+      drawTile(r, c);
+
+  // Caminhos
+  for (const col of colonists) drawPath(col);
+
+  // Colônos
+  for (const col of colonists) drawColonist(col);
+}
+
+// ═══════════════════════════════════════════
+//  LOOP DO JOGO
+// ═══════════════════════════════════════════
+let speed = 1;
+let tick = 0;
+let lastTime = 0;
+const MS_PER_TICK = 50;
+
+function setSpeed(s) {
+  speed = s;
+  ['pause','1x','3x'].forEach(id => document.getElementById('btn-'+id).classList.remove('active'));
+  if (s === 0) document.getElementById('btn-pause').classList.add('active');
+  if (s === 1) document.getElementById('btn-1x').classList.add('active');
+  if (s === 3) document.getElementById('btn-3x').classList.add('active');
+}
+
+let dayTick = 0;
+const TICKS_PER_DAY = 200;
+
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
+  render();
+
+  if (speed === 0) return;
+
+  const ticksThisFrame = speed;
+  for (let i = 0; i < ticksThisFrame; i++) {
+    if (now - lastTime < MS_PER_TICK / speed) continue;
+    lastTime = now;
+
+    updateColonists();
+    tick++;
+    dayTick++;
+    if (dayTick >= TICKS_PER_DAY) {
+      dayTick = 0;
+      const day = parseInt(document.getElementById('day').textContent);
+      document.getElementById('day').textContent = day + 1;
+    }
+    document.getElementById('tick').textContent = tick;
+  }
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
