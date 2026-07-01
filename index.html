@@ -2,1690 +2,618 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>FRONTEIRA — Colônia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Rinwold Mobile</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Spectral:wght@500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-  :root {
-    --bg:        #14130f;
-    --panel:     #1b1a14;
-    --panel2:    #211f17;
-    --line:      #3a361f;
-    --ink:       #d8cfa8;
-    --ink-dim:   #8a8264;
-    --ink-faint: #4f4a35;
-    --amber:     #d4a039;
-    --amber-dim: #8a6a28;
-    --green:     #7fa050;
-    --red:       #b85440;
-    --blue:      #5a8aa8;
-    --hunger:    #c47840;
-    --rest:      #6a8ab0;
-    --mood:      #b09050;
-  }
-
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
-    overflow: hidden;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  #app {
+  body {
+    background: #1a1a12;
+    color: #c8b97a;
+    font-family: 'Courier New', monospace;
     height: 100dvh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    user-select: none;
   }
 
-  /* ═══════════════ TOP BAR ═══════════════ */
+  /* ── TOP BAR ── */
   #topbar {
-    background: var(--panel);
-    border-bottom: 1px solid var(--line);
-    padding: 7px 12px;
+    background: #111109;
+    border-bottom: 1px solid #3a3520;
+    padding: 6px 12px;
     display: flex;
     align-items: center;
-    gap: 14px;
-    font-size: 10.5px;
+    gap: 12px;
+    font-size: 11px;
+    color: #7a6e44;
     flex-shrink: 0;
-    z-index: 20;
   }
-  .brand {
-    font-family: 'Spectral', serif;
-    font-weight: 600;
-    font-size: 13px;
-    letter-spacing: 0.14em;
-    color: var(--amber);
-    margin-right: 4px;
-  }
-  .stat-pill {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--ink-dim);
-  }
-  .stat-pill b { color: var(--ink); font-weight: 600; }
-  .stat-pill.warn b { color: var(--amber); }
-  .stat-pill.crit b { color: var(--red); }
-  #season-tag {
-    margin-left: auto;
-    color: var(--ink-faint);
-    font-size: 9.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
+  #topbar span { color: #c8b97a; font-weight: bold; }
+  #topbar .title { color: #e8d48a; font-size: 13px; letter-spacing: 2px; margin-right: auto; }
+  #day-counter { color: #a09060; }
 
-  /* ═══════════════ GAME AREA ═══════════════ */
-  #stage {
+  /* ── CANVAS WRAPPER ── */
+  #game-area {
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: var(--bg);
+    background: #1a1a12;
   }
-  canvas { display: block; touch-action: none; }
-
-  #daynight-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: rgba(10,12,30,0);
-    transition: background 0.3s linear;
+  canvas {
+    display: block;
+    image-rendering: pixelated;
   }
 
-  /* Floating alert toast */
-  #alert-stack {
-    position: absolute;
-    top: 10px; left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    align-items: center;
-    pointer-events: none;
-    z-index: 15;
-    width: 92%;
-  }
-  .alert-toast {
-    background: rgba(27,26,20,0.95);
-    border: 1px solid var(--amber-dim);
-    color: var(--amber);
-    font-size: 11px;
-    padding: 6px 14px;
-    border-radius: 3px;
-    animation: alertIn 0.25s ease, alertOut 0.4s ease 3.2s forwards;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-    max-width: 320px;
-    text-align: center;
-  }
-  .alert-toast.danger { border-color: var(--red); color: #e08a78; }
-  @keyframes alertIn { from { opacity:0; transform: translateY(-8px);} to {opacity:1; transform: none;} }
-  @keyframes alertOut { to { opacity: 0; transform: translateY(-8px); } }
-
-  /* Build mode ghost cursor hint */
-  #build-hint {
-    position: absolute;
-    bottom: 10px; left: 50%;
-    transform: translateX(-50%);
-    background: rgba(27,26,20,0.92);
-    border: 1px solid var(--amber-dim);
-    color: var(--amber);
-    font-size: 10.5px;
-    padding: 5px 12px;
-    border-radius: 3px;
-    display: none;
-    z-index: 14;
-    letter-spacing: 0.03em;
-  }
-
-  /* ═══════════════ TABS ═══════════════ */
-  #tabs {
-    display: flex;
-    background: var(--panel);
-    border-top: 1px solid var(--line);
-    flex-shrink: 0;
-    z-index: 20;
-  }
-  .tab-btn {
-    flex: 1;
-    background: none;
-    border: none;
-    color: var(--ink-faint);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 8px 4px 6px;
-    cursor: pointer;
-    border-top: 2px solid transparent;
-    transition: color 0.15s;
-  }
-  .tab-btn.active { color: var(--amber); border-top-color: var(--amber); }
-  .tab-btn:active { background: var(--panel2); }
-
-  /* ═══════════════ BOTTOM PANEL ═══════════════ */
+  /* ── BOTTOM PANEL ── */
   #panel {
-    background: var(--panel);
-    border-top: 1px solid var(--line);
+    background: #111109;
+    border-top: 1px solid #3a3520;
+    padding: 8px 12px;
+    min-height: 64px;
     flex-shrink: 0;
-    max-height: 40dvh;
-    overflow-y: auto;
   }
-  .panel-inner { padding: 10px 12px 14px; }
-  .panel-empty {
-    color: var(--ink-faint);
+  #panel-title {
+    font-size: 10px;
+    color: #5a5030;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  #panel-content {
+    font-size: 12px;
+    color: #a09060;
+    line-height: 1.5;
+  }
+  #panel-content .name { color: #e8d48a; font-weight: bold; }
+  #panel-content .stat { color: #8ab87a; }
+  #panel-content .hint { color: #4a4428; font-size: 11px; }
+
+  /* ── SPEED CONTROLS ── */
+  #speed-bar {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #0e0e09;
+    border-top: 1px solid #2a2515;
+    flex-shrink: 0;
+  }
+  .speed-btn {
+    background: #1e1e12;
+    border: 1px solid #3a3520;
+    color: #7a6e44;
+    font-family: 'Courier New', monospace;
     font-size: 11px;
-    text-align: center;
-    padding: 16px 10px;
-    line-height: 1.6;
-  }
-
-  /* ── Colonist detail ── */
-  .col-head {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-  }
-  .col-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.4); flex-shrink:0; }
-  .col-name { font-family: 'Spectral', serif; font-size: 14px; font-weight: 600; color: var(--ink); }
-  .col-job { font-size: 10px; color: var(--ink-dim); margin-left: auto; }
-
-  .need-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .need-label { font-size: 9.5px; color: var(--ink-faint); width: 52px; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink:0; }
-  .need-track { flex: 1; height: 6px; background: #100f0b; border-radius: 3px; overflow: hidden; border: 1px solid var(--line); }
-  .need-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
-  .need-val { font-size: 9.5px; color: var(--ink-dim); width: 28px; text-align: right; flex-shrink:0; }
-
-  .col-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-  .mini-btn {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    color: var(--ink-dim);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px;
-    padding: 5px 9px;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  .mini-btn:active { background: var(--line); }
-  .mini-btn.active-mode { border-color: var(--amber); color: var(--amber); }
-
-  /* ── Build menu ── */
-  .build-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 7px;
-  }
-  .build-item {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 8px 4px 6px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.12s;
-  }
-  .build-item:active { background: var(--line); }
-  .build-item.selected { border-color: var(--amber); }
-  .build-icon { font-size: 18px; line-height: 1; margin-bottom: 4px; }
-  .build-name { font-size: 8.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
-  .build-cost { font-size: 8px; color: var(--ink-faint); margin-top: 2px; }
-  .build-item.disabled { opacity: 0.35; pointer-events: none; }
-
-  /* ── Resource panel ── */
-  .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
-  .res-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--panel2); }
-  .res-row span:first-child { color: var(--ink-dim); }
-  .res-row span:last-child { color: var(--ink); font-weight: 600; }
-
-  /* ── Colonist list (overview) ── */
-  .col-list-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 7px 4px; border-bottom: 1px solid var(--panel2);
-    cursor: pointer;
-  }
-  .col-list-row:active { background: var(--panel2); }
-  .col-list-name { font-size: 11.5px; color: var(--ink); flex: 1; }
-  .col-list-job { font-size: 9.5px; color: var(--ink-faint); }
-  .mini-need { width: 30px; height: 4px; background: #100f0b; border-radius: 2px; overflow: hidden; }
-  .mini-need-fill { height: 100%; }
-
-  /* ═══════════════ SPEED BAR ═══════════════ */
-  #speedbar {
-    display: flex; align-items: center; gap: 5px;
-    padding: 5px 10px; background: #0e0d0a;
-    border-top: 1px solid var(--line);
-    flex-shrink: 0; z-index: 20;
-  }
-  .spd-btn {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    color: var(--ink-dim);
-    font-size: 10.5px;
     padding: 4px 10px;
-    border-radius: 3px;
+    border-radius: 2px;
     cursor: pointer;
-    font-family: 'JetBrains Mono', monospace;
+    transition: background 0.1s;
   }
-  .spd-btn.active { background: rgba(212,160,57,0.15); border-color: var(--amber); color: var(--amber); }
-  .spd-btn:active { background: var(--line); }
-  #clock { margin-left: auto; font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.04em; }
-
-  /* Scrollbar */
-  #panel::-webkit-scrollbar { width: 4px; }
-  #panel::-webkit-scrollbar-thumb { background: var(--line); }
+  .speed-btn.active { background: #3a3020; border-color: #c8b97a; color: #e8d48a; }
+  .speed-btn:active { background: #2a2518; }
+  #tick-label { color: #3a3520; font-size: 10px; margin-left: auto; align-self: center; }
 </style>
 </head>
 <body>
-<div id="app">
 
-  <div id="topbar">
-    <span class="brand">FRONTEIRA</span>
-    <span class="stat-pill" id="pill-pop">👥 <b id="v-pop">0</b></span>
-    <span class="stat-pill" id="pill-food">🌾 <b id="v-food">0</b></span>
-    <span class="stat-pill" id="pill-wood">🪵 <b id="v-wood">0</b></span>
-    <span class="stat-pill" id="pill-stone">🪨 <b id="v-stone">0</b></span>
-    <span id="season-tag">Dia <span id="v-day">1</span> · Verão</span>
+<div id="topbar">
+  <div class="title">RINWOLD</div>
+  <div id="day-counter">Dia <span id="day">1</span></div>
+  <div>Colônos: <span id="pop">3</span></div>
+</div>
+
+<div id="game-area">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="panel">
+  <div id="panel-title">seleção</div>
+  <div id="panel-content">
+    <span class="hint">Toque em um colôno para selecioná-lo,<br>depois toque no mapa para movê-lo.</span>
   </div>
+</div>
 
-  <div id="stage">
-    <canvas id="c"></canvas>
-    <div id="daynight-overlay"></div>
-    <div id="alert-stack"></div>
-    <div id="build-hint">Toque num tile para construir · Toque fora para cancelar</div>
-  </div>
-
-  <div id="tabs">
-    <button class="tab-btn active" data-tab="info">Inspecionar</button>
-    <button class="tab-btn" data-tab="colonists">Colônos</button>
-    <button class="tab-btn" data-tab="build">Construir</button>
-    <button class="tab-btn" data-tab="res">Recursos</button>
-  </div>
-
-  <div id="panel">
-    <div class="panel-inner" id="panel-content">
-      <div class="panel-empty">Toque em um colôno no mapa<br>para ver seus detalhes.</div>
-    </div>
-  </div>
-
-  <div id="speedbar">
-    <button class="spd-btn" id="btn-s0" onclick="setSpeed(0)">⏸</button>
-    <button class="spd-btn active" id="btn-s1" onclick="setSpeed(1)">▶</button>
-    <button class="spd-btn" id="btn-s2" onclick="setSpeed(3)">▶▶</button>
-    <button class="spd-btn" id="btn-s3" onclick="setSpeed(6)">▶▶▶</button>
-    <span id="clock">06:00</span>
-  </div>
-
+<div id="speed-bar">
+  <button class="speed-btn" id="btn-pause">⏸</button>
+  <button class="speed-btn active" id="btn-1x">▶ 1x</button>
+  <button class="speed-btn" id="btn-3x">▶▶ 3x</button>
+  <span id="tick-label">tick <span id="tick">0</span></span>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════════════════
-//  FRONTEIRA — motor do jogo (estilo RimWorld simplificado)
-// ════════════════════════════════════════════════════════════════════════
-
-// ── CONFIG DO MUNDO ─────────────────────────────────────────────────────
-const TILE = 34;
-const COLS = 36;
-const ROWS = 36;
-const TICKS_PER_DAY = 3600;      // 1 dia = bem mais longo e legível
-const DAY_START_TICK = 0;        // 06:00
-const NIGHT_TICK = 2280;         // ~22:00 (proporcional a 3600)
-
-// Tipos de terreno
-const T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, TREE: 4, BUSH: 5, SAND: 6, TALLGRASS: 7, FLOWER: 8 };
-
-const TERRAIN = {
-  [T.GRASS]:     { base: '#2c3a1c', edge: '#33421f', walkable: true },
-  [T.DIRT]:      { base: '#3d3120', edge: '#473a26', walkable: true },
-  [T.WATER]:     { base: '#16283a', edge: '#1c3248', walkable: false },
-  [T.ROCK]:      { base: '#2a2924', edge: '#34322b', walkable: false },
-  [T.TREE]:      { base: '#243018', edge: '#2a3820', walkable: false },
-  [T.BUSH]:      { base: '#2c3a1c', edge: '#33421f', walkable: true },
-  [T.SAND]:      { base: '#4a4530', edge: '#544f38', walkable: true },
-  [T.TALLGRASS]: { base: '#2e3d1e', edge: '#354523', walkable: true },
-  [T.FLOWER]:    { base: '#2c3a1c', edge: '#33421f', walkable: true },
+// ═══════════════════════════════════════════
+//  1. CONFIGURAÇÃO CENTRAL DA ENGINE
+// ═══════════════════════════════════════════
+const GameConfig = {
+  TILE_SIZE: 36,
+  MAP_COLS: 20,
+  MAP_ROWS: 20,
+  MS_PER_TICK: 50,
+  TICKS_PER_DAY: 200,
+  COLONIST_SPEED: 3,
+  
+  TERRAIN: { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, TREE: 4 },
+  
+  COLORS: {
+    TERRAIN:   { 0: '#2d3d1a', 1: '#3d2e1a', 2: '#1a2a3d', 3: '#2d2d2d', 4: '#1d3012' },
+    BORDERS:   { 0: '#354820', 1: '#4a3820', 2: '#1e3450', 3: '#383838', 4: '#243a18' },
+    COLONISTS: ['#e87a60', '#60b8e8', '#a0e860', '#e8c060', '#c060e8', '#60e8c0'],
+    NAMES:     ['Ana', 'Bob', 'Cara', 'Davi', 'Eli', 'Fran']
+  }
 };
 
-// ── ESTADO GLOBAL ───────────────────────────────────────────────────────
-const state = {
-  map: [],
-  resources: [],     // { r, c, type, amount, maxAmount }  type: 'tree' | 'rock' | 'berry'
-  animals: [],
-  colonists: [],
-  buildings: [],      // { r, c, type, hp, maxHp, done }
-  stockpile: { food: 60, wood: 40, stone: 10 },
-  selectedColonist: null,
-  buildMode: null,     // null | { type: 'wall'|'floor'|'bed'|'farm'|'door' }
-  tick: 0,
-  day: 1,
-  speed: 1,
-  camera: { x: 0, y: 0 },
-  difficulty: 1,        // sobe lentamente, afeta frequência de eventos negativos
-  raidWarned: false,
-};
-
-// ── GERAÇÃO DE MAPA ─────────────────────────────────────────────────────
-function noise2(r, c, seed) {
-  // Pseudo-noise simples baseado em seno (suficiente p/ terreno orgânico)
-  const x = r * 0.13 + seed, y = c * 0.13 + seed * 1.7;
-  return (Math.sin(x * 1.7 + Math.cos(y * 2.1)) + Math.sin(y * 1.3 + Math.cos(x * 0.9))) / 2;
-}
-
-function generateMap() {
-  const map = [];
-  const seedA = Math.random() * 100;
-  const seedB = Math.random() * 100;
-
-  for (let r = 0; r < ROWS; r++) {
-    map[r] = [];
-    for (let c = 0; c < COLS; c++) {
-      const n = noise2(r, c, seedA);
-      const m = noise2(c, r, seedB);
-      let type = T.GRASS;
-      if (n < -0.55) type = T.WATER;
-      else if (n < -0.4) type = T.SAND;
-      else if (m > 0.5) type = T.ROCK;
-      else if (m > 0.25) type = T.TREE;
-      else if (m > 0.1) type = T.BUSH;
-      else type = T.GRASS;
-      map[r][c] = type;
-    }
+// ═══════════════════════════════════════════
+//  2. SISTEMA DE MUNDO (MAPA & PATHFINDING)
+// ═══════════════════════════════════════════
+class WorldSystem {
+  constructor() {
+    this.map = [];
+    this.generateMap();
   }
 
-  // Garante área central limpa pra base inicial
-  const cr = Math.floor(ROWS / 2), cc = Math.floor(COLS / 2);
-  for (let dr = -4; dr <= 4; dr++)
-    for (let dc = -4; dc <= 4; dc++) {
-      const rr = cr + dr, cc2 = cc + dc;
-      if (rr < 0 || rr >= ROWS || cc2 < 0 || cc2 >= COLS) continue;
-      if (Math.abs(dr) + Math.abs(dc) <= 5 && map[rr][cc2] !== T.WATER) {
-        map[rr][cc2] = Math.random() < 0.85 ? T.GRASS : map[rr][cc2];
+  generateMap() {
+    const rows = GameConfig.MAP_ROWS;
+    const cols = GameConfig.MAP_COLS;
+    const T = GameConfig.TERRAIN;
+
+    for (let r = 0; r < rows; r++) {
+      this.map[r] = [];
+      for (let c = 0; c < cols; c++) {
+        const rnd = Math.random();
+        if (rnd < 0.60)      this.map[r][c] = T.GRASS;
+        else if (rnd < 0.75) this.map[r][c] = T.DIRT;
+        else if (rnd < 0.82) this.map[r][c] = T.TREE;
+        else if (rnd < 0.88) this.map[r][c] = T.ROCK;
+        else                 this.map[r][c] = T.WATER;
       }
     }
 
-  // Espalha grama alta e flores em meio à grama normal pra variar a textura
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (map[r][c] === T.GRASS) {
-        const roll = Math.random();
-        if (roll < 0.10) map[r][c] = T.TALLGRASS;
-        else if (roll < 0.13) map[r][c] = T.FLOWER;
+    // Lago centralizado
+    const midR = Math.floor(rows / 2);
+    const midC = Math.floor(cols / 2);
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        if (Math.abs(dr) + Math.abs(dc) <= 3) {
+          this.map[midR + dr][midC + dc] = T.WATER;
+        }
       }
     }
   }
 
-  return map;
-}
-
-function walkableTerrain(r, c) {
-  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
-  return TERRAIN[state.map[r][c]].walkable;
-}
-
-function tileBlocked(r, c) {
-  // Bloqueado por construção sólida (parede)
-  const b = state.buildings.find(b => b.r === r && b.c === c && b.done);
-  if (b && (b.type === 'wall')) return true;
-  return false;
-}
-
-function walkable(r, c) {
-  return walkableTerrain(r, c) && !tileBlocked(r, c);
-}
-
-// ── RECURSOS COLETÁVEIS (árvores, pedras, arbustos) ─────────────────────
-function generateResources() {
-  const res = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const t = state.map[r][c];
-      if (t === T.TREE) {
-        res.push({ r, c, type: 'tree', amount: 18, maxAmount: 18, claimed: false });
-      } else if (t === T.ROCK && Math.random() < 0.4) {
-        res.push({ r, c, type: 'rock', amount: 30, maxAmount: 30, claimed: false });
-      } else if (t === T.BUSH) {
-        res.push({ r, c, type: 'berry', amount: 8, maxAmount: 8, regrow: 0, claimed: false });
-      }
-    }
+  isWalkable(r, c) {
+    if (r < 0 || r >= GameConfig.MAP_ROWS || c < 0 || c >= GameConfig.MAP_COLS) return false;
+    const tile = this.map[r][c];
+    return tile !== GameConfig.TERRAIN.WATER && tile !== GameConfig.TERRAIN.ROCK;
   }
-  return res;
-}
 
-function resourceAt(r, c) {
-  return state.resources.find(x => x.r === r && x.c === c && x.amount > 0);
-}
+  findPath(sr, sc, er, ec) {
+    if (!this.isWalkable(er, ec)) return [];
+    
+    const key = (r, c) => r * 100 + c;
+    const heuristic = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+    
+    const open = [{ r: sr, c: sc, g: 0, f: heuristic({r:sr, c:sc}, {r:er, c:ec}), from: null }];
+    const visited = new Map();
+    visited.set(key(sr, sc), { g: 0, from: null });
 
-// ════════════════════════════════════════════════════════════════════════
-//  ANIMAIS SELVAGENS
-// ════════════════════════════════════════════════════════════════════════
-const ANIMAL_TYPES = {
-  deer:   { name: 'Veado',  color: '#8a6a48', meat: 22, fleeRange: 4, speed: 1.1 },
-  boar:   { name: 'Javali', color: '#5a4636', meat: 30, fleeRange: 3, speed: 0.9 },
-  rabbit: { name: 'Coelho', color: '#a8987a', meat: 6,  fleeRange: 5, speed: 1.6 },
-};
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
 
-function makeAnimal(type, r, c) {
-  return {
-    id: Math.random().toString(36).slice(2),
-    type, r, c,
-    px: c*TILE+TILE/2, py: r*TILE+TILE/2,
-    path: [], wanderTimer: Math.random()*200,
-    state: 'idle',     // idle | wander | flee | hunted
-    hp: 20, claimed: false,
-  };
-}
+    while (open.length) {
+      open.sort((a, b) => a.f - b.f);
+      const cur = open.shift();
+      
+      if (cur.r === er && cur.c === ec) {
+        const path = [];
+        let node = { r: er, c: ec };
+        while (node) {
+          path.unshift(node);
+          node = visited.get(key(node.r, node.c)).from;
+        }
+        return path.slice(1);
+      }
 
-function spawnAnimals() {
-  const counts = { deer: 4, boar: 2, rabbit: 6 };
-  Object.entries(counts).forEach(([type, n]) => {
-    let placed = 0, attempts = 0;
-    while (placed < n && attempts < 200) {
-      attempts++;
-      const r = Math.floor(Math.random()*ROWS), c = Math.floor(Math.random()*COLS);
-      if (walkableTerrain(r, c) && state.map[r][c] !== T.SAND) {
-        state.animals.push(makeAnimal(type, r, c));
-        placed++;
+      for (const [dr, dc] of dirs) {
+        const nr = cur.r + dr;
+        const nc = cur.c + dc;
+        if (!this.isWalkable(nr, nc)) continue;
+        
+        const g = cur.g + (dr !== 0 && dc !== 0 ? 1.4 : 1);
+        const k = key(nr, nc);
+        
+        if (!visited.has(k) || visited.get(k).g > g) {
+          visited.set(k, { g, from: { r: cur.r, c: cur.c } });
+          open.push({ r: nr, c: nc, g, f: g + heuristic({r:nr, c:nc}, {r:er, c:ec}) });
+        }
       }
     }
-  });
+    return [];
+  }
 }
 
-function updateAnimal(animal, dt) {
-  animal.wanderTimer -= dt;
+// ═══════════════════════════════════════════
+//  3. SISTEMA DE ENTIDADES (COLÔNOS / INTERFACE)
+// ═══════════════════════════════════════════
+class EntitySystem {
+  constructor() {
+    this.colonists = [];
+    this.selected = null;
+    this.initColonists();
+  }
 
-  // Foge se um colôno estiver muito perto e não for o caçador atribuído
-  const nearHunter = state.colonists.find(c =>
-    c.job === 'hunt' && c.jobTarget === animal
-  );
-
-  if (animal.path.length === 0 && animal.wanderTimer <= 0 && animal.state !== 'flee') {
-    animal.wanderTimer = 250 + Math.random()*300;
-    const dr = Math.floor(Math.random()*7)-3, dc = Math.floor(Math.random()*7)-3;
-    const nr = Math.max(0,Math.min(ROWS-1, animal.r+dr));
-    const nc = Math.max(0,Math.min(COLS-1, animal.c+dc));
-    if (walkable(nr, nc)) {
-      animal.path = astar(animal.r, animal.c, nr, nc);
-      animal.state = 'wander';
+  initColonists() {
+    const ts = GameConfig.TILE_SIZE;
+    for (let i = 0; i < 3; i++) {
+      const r = 2 + i;
+      const c = 2 + (i * 2);
+      this.colonists.push({
+        name: GameConfig.COLORS.NAMES[i],
+        r, c,
+        color: GameConfig.COLORS.COLONISTS[i],
+        path: [],
+        px: c * ts + ts / 2,
+        py: r * ts + ts / 2,
+        selected: false,
+        job: 'Ocioso'
+      });
     }
   }
 
-  // Movimento
-  if (animal.path.length > 0) {
-    const next = animal.path[0];
-    const tx = next.c*TILE+TILE/2, ty = next.r*TILE+TILE/2;
-    const dx = tx-animal.px, dy = ty-animal.py;
-    const dist = Math.sqrt(dx*dx+dy*dy);
-    const spd = (ANIMAL_TYPES[animal.type].speed) * dt * (animal.state==='flee' ? 1.8 : 1);
-    if (dist < spd) {
-      animal.px = tx; animal.py = ty;
-      animal.r = next.r; animal.c = next.c;
-      animal.path.shift();
+  selectAt(r, c) {
+    let hit = null;
+    for (const col of this.colonists) {
+      if (col.r === r && col.c === c) {
+        hit = col;
+        break;
+      }
+    }
+
+    this.colonists.forEach(col => col.selected = false);
+
+    if (hit) {
+      hit.selected = true;
+      this.selected = hit;
+      this.updatePanelUI(hit);
     } else {
-      animal.px += (dx/dist)*spd;
-      animal.py += (dy/dist)*spd;
+      this.selected = null;
+      this.showDefaultPanelUI();
     }
-  } else if (animal.state === 'flee') {
-    animal.state = 'idle';
+    return hit;
   }
-}
 
-// ════════════════════════════════════════════════════════════════════════
-//  PATHFINDING (A*)
-// ════════════════════════════════════════════════════════════════════════
-function heuristic(a, b) { return Math.abs(a.r - b.r) + Math.abs(a.c - b.c); }
-
-function astar(sr, sc, er, ec, allowTarget) {
-  // allowTarget: se true, permite que o destino seja não-walkable (ex: árvore)
-  // contanto que exista um vizinho walkable adjacente — usado para "ir até" recursos
-  if (!walkable(er, ec) && !allowTarget) return [];
-
-  const key = (r, c) => r * 1000 + c;
-  const open = [{ r: sr, c: sc, g: 0, f: heuristic({ r: sr, c: sc }, { r: er, c: ec }) }];
-  const visited = new Map();
-  visited.set(key(sr, sc), { g: 0, from: null });
-  const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
-  let iterations = 0;
-
-  while (open.length && iterations < 2000) {
-    iterations++;
-    open.sort((a, b) => a.f - b.f);
-    const cur = open.shift();
-
-    const reachedTarget = (cur.r === er && cur.c === ec) ||
-      (allowTarget && Math.abs(cur.r - er) + Math.abs(cur.c - ec) === 1);
-
-    if (reachedTarget) {
-      const path = [];
-      let node = { r: cur.r, c: cur.c };
-      while (node) {
-        path.unshift(node);
-        const v = visited.get(key(node.r, node.c));
-        node = v.from;
-      }
-      return path.slice(1);
-    }
-
-    for (const [dr, dc] of dirs) {
-      const nr = cur.r + dr, nc = cur.c + dc;
-      if (!walkable(nr, nc)) continue;
-      // Evita atravessar diagonal entre dois obstáculos (corner cut)
-      if (dr !== 0 && dc !== 0) {
-        if (!walkable(cur.r, nc) || !walkable(nr, cur.c)) continue;
-      }
-      const g = cur.g + (dr !== 0 && dc !== 0 ? 1.4 : 1);
-      const k = key(nr, nc);
-      if (!visited.has(k) || visited.get(k).g > g) {
-        visited.set(k, { g, from: { r: cur.r, c: cur.c } });
-        open.push({ r: nr, c: nc, g, f: g + heuristic({ r: nr, c: nc }, { r: er, c: ec }) });
-      }
-    }
-  }
-  return [];
-}
-
-function findNearestWalkable(r, c) {
-  if (walkable(r, c)) return { r, c };
-  for (let radius = 1; radius <= 4; radius++) {
-    for (let dr = -radius; dr <= radius; dr++)
-      for (let dc = -radius; dc <= radius; dc++) {
-        const nr = r + dr, nc = c + dc;
-        if (walkable(nr, nc)) return { r: nr, c: nc };
-      }
-  }
-  return null;
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  COLÔNOS
-// ════════════════════════════════════════════════════════════════════════
-const NAMES = ['Ana Reyes','Tomás Silva','Mei Lin','Iris Voss','Caleb Orr','Nadia Cruz'];
-const SKIN  = ['#e0a878','#c98a5c','#a8703f','#f0c8a0'];
-const HAIR  = ['#2a1a10','#5a3a1e','#1a1a1a','#7a4a20'];
-const SHIRT = ['#7a3030','#30587a','#3a6a40','#7a5a20','#5a3a6a','#6a6a30'];
-
-function makeColonist(name, r, c) {
-  return {
-    id: Math.random().toString(36).slice(2),
-    name, r, c,
-    px: c * TILE + TILE / 2, py: r * TILE + TILE / 2,
-    skin: SKIN[Math.floor(Math.random()*SKIN.length)],
-    hair: HAIR[Math.floor(Math.random()*HAIR.length)],
-    shirt: SHIRT[Math.floor(Math.random()*SHIRT.length)],
-    bodyScale: 0.92 + Math.random()*0.16,
-    path: [],
-    selected: false,
-    job: 'idle',           // idle | move | chop | mine | harvest | build | haul | sleep | eat
-    jobTarget: null,       // referência ao recurso/construção alvo
-    jobTimer: 0,
-    carrying: null,        // { type, amount }
-    needs: { hunger: 80 + Math.random()*15, rest: 80 + Math.random()*15, mood: 65 + Math.random()*15 },
-    health: 100,
-    manualTarget: null,    // destino definido manualmente pelo jogador
-    speed: 1.5 + Math.random()*0.35,
-    skill: { wood: 0.8 + Math.random()*0.6, mine: 0.8 + Math.random()*0.6, build: 0.8 + Math.random()*0.6 },
-  };
-}
-
-function spawnInitialColonists() {
-  const cr = Math.floor(ROWS/2), cc = Math.floor(COLS/2);
-  const spots = [[0,-2],[1,1],[-1,2]];
-  spots.forEach((off, i) => {
-    const col = makeColonist(NAMES[i], cr+off[0], cc+off[1]);
-    state.colonists.push(col);
-    assignJob(col);
-  });
-}
-
-// ── NECESSIDADES ────────────────────────────────────────────────────────
-function decayNeeds(col, dt) {
-  col.needs.hunger = Math.max(0, col.needs.hunger - 0.0035 * dt);
-  col.needs.rest   = Math.max(0, col.needs.rest   - 0.0026 * dt);
-  // Humor reage a fome/descanso baixos
-  let moodTarget = 70;
-  if (col.needs.hunger < 30) moodTarget -= 25;
-  if (col.needs.rest   < 30) moodTarget -= 20;
-  if (col.needs.hunger < 10) moodTarget -= 15;
-  col.needs.mood += (moodTarget - col.needs.mood) * 0.004 * dt;
-  col.needs.mood = Math.max(0, Math.min(100, col.needs.mood));
-
-  // FOME SEVERA: dano de saúde se ficar zerada por muito tempo
-  if (col.needs.hunger <= 0) {
-    col.health = Math.max(0, (col.health ?? 100) - 0.03 * dt);
-  } else if (col.health < 100) {
-    col.health = Math.min(100, col.health + 0.01 * dt);
-  }
-}
-
-function needColor(val) {
-  if (val > 60) return '#7fa050';
-  if (val > 30) return '#c4943f';
-  return '#b85440';
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  IA DE TRABALHO — decide o que cada colôno deve fazer
-// ════════════════════════════════════════════════════════════════════════
-const JOB_DURATION = { chop: 240, mine: 280, harvest: 160, build: 260, eat: 130, sleep: 1, hunt: 220 };
-
-function assignJob(col) {
-  // Prioridade 1: sobrevivência crítica
-  if (col.needs.hunger < 25 && state.stockpile.food > 0) {
-    col.job = 'goeat'; col.jobTarget = null;
-    const spot = stockpileSpot();
-    col.path = pathTo(col, spot[0], spot[1]);
-    if (col.path.length === 0 && col.r === spot[0] && col.c === spot[1]) arrivedAtDestination(col);
-    return;
-  }
-  if (col.needs.rest < 20) {
-    const bed = state.buildings.find(b => b.type === 'bed' && b.done && !b.occupied);
-    if (bed) {
-      bed.occupied = col.id;
-      col.job = 'gosleep'; col.jobTarget = bed;
-      col.path = pathTo(col, bed.r, bed.c);
-      if (col.path.length === 0) arrivedAtDestination(col);
-      return;
+  issueMoveOrder(targetR, targetC, world) {
+    if (this.selected && world.isWalkable(targetR, targetC)) {
+      this.selected.path = world.findPath(this.selected.r, this.selected.c, targetR, targetC);
+      this.selected.job = 'Caminhando';
+      this.updatePanelUI(this.selected);
     }
   }
 
-  // Prioridade 2: construções pendentes (precisam de material já entregue)
-  const pendingBuild = state.buildings.find(b => !b.done && b.materialDelivered >= b.materialCost && !b.beingBuilt);
-  if (pendingBuild) {
-    pendingBuild.beingBuilt = col.id;
-    col.job = 'gobuild'; col.jobTarget = pendingBuild;
-    col.path = pathTo(col, pendingBuild.r, pendingBuild.c, true);
-    if (col.path.length === 0) arrivedAtDestination(col);
-    return;
-  }
+  update(world) {
+    const ts = GameConfig.TILE_SIZE;
+    const speed = GameConfig.COLONIST_SPEED;
 
-  // Prioridade 3: entregar material para construção que falta recurso
-  const needsHaul = state.buildings.find(b => !b.done && b.materialDelivered < b.materialCost);
-  if (needsHaul && state.stockpile[needsHaul.materialType] > 0 && !col.carrying) {
-    col.job = 'gohaul'; col.jobTarget = needsHaul;
-    const spot = stockpileSpot();
-    col.path = pathTo(col, spot[0], spot[1]);
-    if (col.path.length === 0 && col.r === spot[0] && col.c === spot[1]) arrivedAtDestination(col);
-    return;
-  }
-
-  // Prioridade 4: colher comida (mantém um excedente saudável, não só em crise)
-  if (state.stockpile.food < 80) {
-    const berry = state.resources.find(r => r.type === 'berry' && r.amount > 0 && !r.claimed);
-    if (berry) {
-      berry.claimed = col.id;
-      col.job = 'goharvest'; col.jobTarget = berry;
-      col.path = pathTo(col, berry.r, berry.c, true);
-      if (col.path.length === 0) arrivedAtDestination(col);
-      return;
-    }
-    // Sem arbustos disponíveis e comida realmente baixa: caça
-    if (state.stockpile.food < 40) {
-      const prey = state.animals.find(a => !a.claimed && a.hp > 0);
-      if (prey) {
-        prey.claimed = col.id;
-        col.job = 'gohunt'; col.jobTarget = prey;
-        col.path = pathTo(col, prey.r, prey.c, true);
-        if (col.path.length === 0) arrivedAtDestination(col);
-        return;
-      }
-    }
-  }
-
-  // Prioridade 5: cortar madeira se estoque baixo
-  if (state.stockpile.wood < 50) {
-    const tree = state.resources.find(r => r.type === 'tree' && r.amount > 0 && !r.claimed);
-    if (tree) {
-      tree.claimed = col.id;
-      col.job = 'gochop'; col.jobTarget = tree;
-      col.path = pathTo(col, tree.r, tree.c, true);
-      if (col.path.length === 0) arrivedAtDestination(col);
-      return;
-    }
-  }
-
-  // Prioridade 6: minerar pedra
-  if (state.stockpile.stone < 40) {
-    const rock = state.resources.find(r => r.type === 'rock' && r.amount > 0 && !r.claimed);
-    if (rock) {
-      rock.claimed = col.id;
-      col.job = 'gomine'; col.jobTarget = rock;
-      col.path = pathTo(col, rock.r, rock.c, true);
-      if (col.path.length === 0) arrivedAtDestination(col);
-      return;
-    }
-  }
-
-  // Nada a fazer
-  col.job = 'idle'; col.jobTarget = null;
-}
-
-function pathTo(col, r, c, allowAdjacent) {
-  return astar(col.r, col.c, r, c, allowAdjacent);
-}
-
-function stockpileSpot() {
-  const cr = Math.floor(ROWS/2), cc = Math.floor(COLS/2);
-  return [cr, cc];
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  EXECUÇÃO DE JOBS — colôno chegou ao destino, executa a ação
-// ════════════════════════════════════════════════════════════════════════
-function arrivedAtDestination(col) {
-  switch (col.job) {
-
-    case 'gochop':
-      if (col.jobTarget && col.jobTarget.amount > 0) { col.job = 'chop'; col.jobTimer = 0; }
-      else assignJob(col);
-      break;
-
-    case 'gomine':
-      if (col.jobTarget && col.jobTarget.amount > 0) { col.job = 'mine'; col.jobTimer = 0; }
-      else assignJob(col);
-      break;
-
-    case 'goharvest':
-      if (col.jobTarget && col.jobTarget.amount > 0) { col.job = 'harvest'; col.jobTimer = 0; }
-      else assignJob(col);
-      break;
-
-    case 'gohunt':
-      if (col.jobTarget && col.jobTarget.hp > 0) { col.job = 'hunt'; col.jobTimer = 0; }
-      else assignJob(col);
-      break;
-
-    case 'gobuild':
-      if (col.jobTarget && !col.jobTarget.done) { col.job = 'build'; col.jobTimer = 0; }
-      else assignJob(col);
-      break;
-
-    case 'gohaul': {
-      const need = col.jobTarget;
-      if (need && !need.done) {
-        const amt = Math.min(10, state.stockpile[need.materialType], need.materialCost - need.materialDelivered);
-        if (amt > 0) {
-          state.stockpile[need.materialType] -= amt;
-          col.carrying = { type: need.materialType, amount: amt };
-          col.path = pathTo(col, need.r, need.c, true);
-          col.job = 'delivering';
-        } else assignJob(col);
-      } else assignJob(col);
-      break;
-    }
-
-    case 'delivering': {
-      const need = col.jobTarget;
-      if (need && col.carrying) {
-        need.materialDelivered += col.carrying.amount;
-        col.carrying = null;
-      }
-      assignJob(col);
-      break;
-    }
-
-    case 'goeat':
-      col.job = 'eat'; col.jobTimer = 0;
-      break;
-
-    case 'gosleep':
-      col.job = 'sleep'; col.jobTimer = 0;
-      break;
-
-    default:
-      assignJob(col);
-  }
-}
-
-function updateJobProgress(col, dt) {
-  switch (col.job) {
-    case 'chop': case 'mine': case 'harvest': case 'build': case 'hunt': {
-      const skillKey = col.job === 'chop' ? 'wood' : col.job === 'mine' ? 'mine' : col.job === 'build' ? 'build' : 'wood';
-      const mult = col.job === 'hunt' ? 1 : (col.skill[skillKey] || 1);
-      col.jobTimer += dt * mult;
-      const dur = JOB_DURATION[col.job];
-      if (col.jobTimer >= dur) {
-        completeJob(col);
-      }
-      break;
-    }
-    case 'eat': {
-      col.jobTimer += dt;
-      if (col.jobTimer >= JOB_DURATION.eat) {
-        const eaten = Math.min(state.stockpile.food, 20);
-        state.stockpile.food -= eaten;
-        col.needs.hunger = Math.min(100, col.needs.hunger + 55);
-        assignJob(col);
-      }
-      break;
-    }
-    case 'sleep': {
-      col.needs.rest = Math.min(100, col.needs.rest + 0.35 * dt);
-      if (col.needs.rest >= 95) {
-        if (col.jobTarget) col.jobTarget.occupied = null;
-        assignJob(col);
-      }
-      break;
-    }
-    case 'idle':
-      col.jobTimer += dt;
-      if (col.jobTimer > 15) { col.jobTimer = 0; assignJob(col); }
-      break;
-  }
-}
-
-function completeJob(col) {
-  const target = col.jobTarget;
-  switch (col.job) {
-    case 'chop':
-      if (target) {
-        target.amount = Math.max(0, target.amount - 6);
-        state.stockpile.wood += 6;
-        if (target.amount <= 0) {
-          target.claimed = false;
-          // árvore vira grama
-          state.map[target.r][target.c] = T.GRASS;
-          state.resources = state.resources.filter(r => r !== target);
+    for (const col of this.colonists) {
+      if (col.path.length === 0) {
+        if (col.job === 'Caminhando') {
+          col.job = 'Ocioso';
+          if (col.selected) this.updatePanelUI(col);
         }
+        continue;
       }
-      break;
-    case 'mine':
-      if (target) {
-        target.amount = Math.max(0, target.amount - 5);
-        state.stockpile.stone += 5;
-        if (target.amount <= 0) {
-          target.claimed = false;
-          state.resources = state.resources.filter(r => r !== target);
-        }
+
+      const next = col.path[0];
+      const tx = next.c * ts + ts / 2;
+      const ty = next.r * ts + ts / 2;
+      const dx = tx - col.px;
+      const dy = ty - col.py;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < speed) {
+        col.px = tx;
+        col.py = ty;
+        col.r = next.r;
+        col.c = next.c;
+        col.path.shift();
+      } else {
+        col.px += (dx / dist) * speed;
+        col.py += (dy / dist) * speed;
       }
-      break;
-    case 'harvest':
-      if (target) {
-        target.amount = Math.max(0, target.amount - 4);
-        state.stockpile.food += 4;
-        if (target.amount <= 0) { target.claimed = false; target.regrow = 1400; }
-      }
-      break;
-    case 'hunt':
-      if (target && target.hp > 0) {
-        target.hp -= 12;
-        if (target.hp <= 0) {
-          const def = ANIMAL_TYPES[target.type];
-          state.stockpile.food += def.meat;
-          state.animals = state.animals.filter(a => a !== target);
-          pushAlert(`${def.name} caçado: +${def.meat} comida`);
-        } else {
-          // Animal ferido foge — reinicia job (persegue de novo)
-          target.state = 'flee';
-          col.jobTimer = 0;
-          col.job = 'gohunt';
-          col.path = pathTo(col, target.r, target.c, true);
-          return;
-        }
-      }
-      break;
-    case 'build':
-      if (target) {
-        target.done = true;
-        target.beingBuilt = null;
-        target.hp = target.maxHp;
-        pushAlert(`Construção concluída: ${BUILD_TYPES[target.type].name}`);
-      }
-      break;
-  }
-  if (target && target.claimed === col.id) target.claimed = false;
-  col.jobTimer = 0;
-  assignJob(col);
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  CONSTRUÇÕES
-// ════════════════════════════════════════════════════════════════════════
-const BUILD_TYPES = {
-  wall:  { name: 'Parede',  icon: '▦', materialType: 'wood', cost: 10, hp: 100, solid: true },
-  floor: { name: 'Piso',    icon: '▪', materialType: 'stone', cost: 5,  hp: 40,  solid: false },
-  bed:   { name: 'Cama',    icon: '🛏', materialType: 'wood', cost: 15, hp: 60,  solid: false },
-  farm:  { name: 'Plantação', icon: '🌱', materialType: 'wood', cost: 6, hp: 30, solid: false },
-  door:  { name: 'Porta',   icon: '🚪', materialType: 'wood', cost: 12, hp: 80,  solid: false },
-};
-
-function canPlaceBuilding(r, c) {
-  if (!walkableTerrain(r, c)) return false;
-  if (state.buildings.some(b => b.r === r && b.c === c)) return false;
-  if (state.resources.some(res => res.r === r && res.c === c && res.amount > 0)) return false;
-  return true;
-}
-
-function placeBuildingGhost(type, r, c) {
-  if (!canPlaceBuilding(r, c)) return false;
-  const def = BUILD_TYPES[type];
-  state.buildings.push({
-    r, c, type,
-    materialType: def.materialType,
-    materialCost: def.cost,
-    materialDelivered: 0,
-    hp: 0, maxHp: def.hp,
-    done: false,
-    beingBuilt: null,
-    occupied: null,
-  });
-  return true;
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  ALERTAS
-// ════════════════════════════════════════════════════════════════════════
-function pushAlert(msg, danger) {
-  const stack = document.getElementById('alert-stack');
-  const el = document.createElement('div');
-  el.className = 'alert-toast' + (danger ? ' danger' : '');
-  el.textContent = msg;
-  stack.appendChild(el);
-  setTimeout(() => el.remove(), 3700);
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  MOVIMENTO
-// ════════════════════════════════════════════════════════════════════════
-function updateMovement(col, dt) {
-  if (col.path.length === 0) {
-    if (col.job === 'move') { col.job = 'idle'; col.jobTimer = 0; return; }
-    if (['gochop','gomine','goharvest','gobuild','gohaul','delivering','goeat','gosleep'].includes(col.job)) {
-      arrivedAtDestination(col);
-    }
-    return;
-  }
-  const next = col.path[0];
-  const tx = next.c * TILE + TILE / 2;
-  const ty = next.r * TILE + TILE / 2;
-  const dx = tx - col.px, dy = ty - col.py;
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  const step = col.speed * dt;
-  if (dist < step) {
-    col.px = tx; col.py = ty;
-    col.r = next.r; col.c = next.c;
-    col.path.shift();
-    if (col.path.length === 0) arrivedAtDestination(col);
-  } else {
-    col.px += (dx/dist)*step;
-    col.py += (dy/dist)*step;
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  GAME LOOP — atualização lógica
-// ════════════════════════════════════════════════════════════════════════
-function gameUpdate(dt) {
-  state.tick += dt;
-  if (state.tick >= TICKS_PER_DAY) {
-    state.tick -= TICKS_PER_DAY;
-    state.day++;
-    document.getElementById('v-day').textContent = state.day;
-    onNewDay();
-  }
-
-  // Regrow de arbustos
-  state.resources.forEach(res => {
-    if (res.type === 'berry' && res.regrow > 0) {
-      res.regrow -= dt;
-      if (res.regrow <= 0) { res.amount = res.maxAmount; res.regrow = 0; }
-    }
-  });
-
-  for (const col of state.colonists) {
-    decayNeeds(col, dt);
-    updateMovement(col, dt);
-    updateJobProgress(col, dt);
-
-    // Morte por fome severa prolongada
-    if (col.health <= 0 && !col.dead) {
-      col.dead = true;
-      pushAlert(`${col.name} morreu de fome.`, true);
     }
   }
-  state.colonists = state.colonists.filter(c => !c.dead);
 
-  for (const animal of state.animals) {
-    updateAnimal(animal, dt);
+  updatePanelUI(col) {
+    document.getElementById('panel-title').textContent = 'colôno selecionado';
+    document.getElementById('panel-content').innerHTML =
+      `<span class="name">${col.name}</span> &nbsp;·&nbsp; <span class="stat">${col.job}</span><br>
+       <span class="hint">Toque no mapa para mover · Toque em outro colôno para trocar</span>`;
   }
 
-  maybeSpawnEvent(dt);
-
-  updateHUD();
-  if (state.selectedColonist) refreshColonistPanel(state.selectedColonist);
-}
-
-function onNewDay() {
-  state.difficulty = 1 + (state.day - 1) * 0.08;
-  // Repõe animais aos poucos se a população cair muito
-  if (state.animals.length < 4 && Math.random() < 0.4) {
-    const r = Math.floor(Math.random()*ROWS), c = Math.floor(Math.random()*COLS);
-    if (walkableTerrain(r,c)) state.animals.push(makeAnimal('rabbit', r, c));
+  showDefaultPanelUI() {
+    document.getElementById('panel-title').textContent = 'seleção';
+    document.getElementById('panel-content').innerHTML =
+      `<span class="hint">Toque em um colôno para selecioná-lo,<br>depois toque no mapa para movê-lo.</span>`;
   }
 }
 
-// ── EVENTOS ALEATÓRIOS (escalam com a dificuldade/dias) ─────────────────
-let eventCooldown = 1800;
-function maybeSpawnEvent(dt) {
-  eventCooldown -= dt;
-  if (eventCooldown > 0) return;
-  eventCooldown = 2400 + Math.random()*1800; // próximo evento
+// ═══════════════════════════════════════════
+//  4. SISTEMA DE INPUTS & CÂMERA
+// ═══════════════════════════════════════════
+class InputSystem {
+  constructor(canvas, onMapClick) {
+    this.canvas = canvas;
+    this.cam = { x: 0, y: 0 };
+    this.drag = { active: false, sx: 0, sy: 0, cx: 0, cy: 0, moved: false };
+    this.onMapClick = onMapClick;
 
-  const roll = Math.random();
-  const chanceBad = Math.min(0.65, 0.2 + state.difficulty * 0.08);
+    this.initEvents();
+  }
 
-  if (roll < chanceBad * 0.4) {
-    // Animal raivoso ataca um colôno aleatório
-    const col = state.colonists[Math.floor(Math.random()*state.colonists.length)];
-    if (col) {
-      col.health = Math.max(0, col.health - (8 + state.difficulty*3));
-      pushAlert(`Um animal selvagem atacou ${col.name}!`, true);
-    }
-  } else if (roll < chanceBad * 0.7) {
-    // Onda de frio: acelera fome e sono de todos
-    state.colonists.forEach(c => {
-      c.needs.hunger = Math.max(0, c.needs.hunger - 10);
-      c.needs.mood = Math.max(0, c.needs.mood - 8);
+  clampCamera() {
+    const ts = GameConfig.TILE_SIZE;
+    const maxX = GameConfig.MAP_COLS * ts - this.canvas.width;
+    const maxY = GameConfig.MAP_ROWS * ts - this.canvas.height;
+    this.cam.x = Math.max(0, Math.min(this.cam.x, maxX > 0 ? maxX : 0));
+    this.cam.y = Math.max(0, Math.min(this.cam.y, maxY > 0 ? maxY : 0));
+  }
+
+  getPointerPos(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  initEvents() {
+    this.canvas.addEventListener('pointerdown', e => {
+      const pos = this.getPointerPos(e);
+      this.drag = { active: true, sx: pos.x, sy: pos.y, cx: this.cam.x, cy: this.cam.y, moved: false };
     });
-    pushAlert('Onda de frio atingiu a colônia.', true);
-  } else if (roll < chanceBad) {
-    // Praga nas plantações: reduz comida estocada
-    const loss = Math.min(state.stockpile.food, 10 + state.difficulty*4);
-    state.stockpile.food -= loss;
-    pushAlert(`Pragas destruíram ${Math.floor(loss)} de comida.`, true);
-  } else if (roll < chanceBad + 0.15) {
-    // Bônus: viajante deixa recursos
-    const wood = 10 + Math.floor(Math.random()*15);
-    state.stockpile.wood += wood;
-    pushAlert(`Um viajante deixou ${wood} de madeira.`);
-  } else {
-    // Manada de animais aparece (bom para caça)
-    const r = Math.floor(Math.random()*ROWS), c = Math.floor(Math.random()*COLS);
-    if (walkableTerrain(r,c)) {
-      state.animals.push(makeAnimal(Math.random()<0.5?'deer':'rabbit', r, c));
-      pushAlert('Animais foram avistados nas redondezas.');
-    }
+
+    this.canvas.addEventListener('pointermove', e => {
+      if (!this.drag.active) return;
+      const pos = this.getPointerPos(e);
+      const dx = pos.x - this.drag.sx;
+      const dy = pos.y - this.drag.sy;
+
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) this.drag.moved = true;
+      if (this.drag.moved) {
+        this.cam.x = this.drag.cx - dx;
+        this.cam.y = this.drag.cy - dy;
+        this.clampCamera();
+      }
+    });
+
+    this.canvas.addEventListener('pointerup', e => {
+      if (!this.drag.active) return;
+      this.drag.active = false;
+      
+      if (!this.drag.moved) {
+        const pos = this.getPointerPos(e);
+        const worldX = pos.x + this.cam.x;
+        const worldY = pos.y + this.cam.y;
+        const ts = GameConfig.TILE_SIZE;
+        const r = Math.floor(worldY / ts);
+        const c = Math.floor(worldX / ts);
+        this.onMapClick(r, c);
+      }
+    });
   }
 }
 
-function updateHUD() {
-  document.getElementById('v-pop').textContent = state.colonists.length;
-  document.getElementById('v-food').textContent = Math.floor(state.stockpile.food);
-  document.getElementById('v-wood').textContent = Math.floor(state.stockpile.wood);
-  document.getElementById('v-stone').textContent = Math.floor(state.stockpile.stone);
-
-  // Relógio
-  const totalMinutes = (state.tick / TICKS_PER_DAY) * 24 * 60;
-  const hh = Math.floor(totalMinutes / 60).toString().padStart(2,'0');
-  const mm = Math.floor(totalMinutes % 60).toString().padStart(2,'0');
-  document.getElementById('clock').textContent = `${hh}:${mm}`;
-
-  // Overlay dia/noite
-  const isNight = state.tick > NIGHT_TICK || state.tick < 40;
-  const overlay = document.getElementById('daynight-overlay');
-  let alpha = 0;
-  if (state.tick > NIGHT_TICK) alpha = Math.min(0.55, (state.tick - NIGHT_TICK) / 150 * 0.55);
-  else if (state.tick < 60) alpha = Math.max(0, 0.55 - (state.tick/60)*0.55);
-  overlay.style.background = `rgba(8,10,28,${alpha})`;
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  RENDERIZAÇÃO
-// ════════════════════════════════════════════════════════════════════════
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-const stage = document.getElementById('stage');
-
-function resizeCanvas() {
-  canvas.width = stage.clientWidth;
-  canvas.height = stage.clientHeight;
-  clampCamera();
-}
-
-function clampCamera() {
-  const maxX = COLS * TILE - canvas.width;
-  const maxY = ROWS * TILE - canvas.height;
-  state.camera.x = Math.max(0, Math.min(state.camera.x, Math.max(0,maxX)));
-  state.camera.y = Math.max(0, Math.min(state.camera.y, Math.max(0,maxY)));
-}
-
-function drawTile(r, c) {
-  const type = state.map[r][c];
-  const def = TERRAIN[type];
-  const x = c * TILE - state.camera.x;
-  const y = r * TILE - state.camera.y;
-
-  ctx.fillStyle = def.base;
-  ctx.fillRect(x, y, TILE, TILE);
-
-  // Textura sutil: variação por posição (evita flat look)
-  const variant = (r*31 + c*17) % 5;
-  if (variant === 0) {
-    ctx.fillStyle = 'rgba(255,255,255,0.02)';
-    ctx.fillRect(x, y, TILE, TILE);
+// ═══════════════════════════════════════════
+//  5. SISTEMA DE RENDERIZAÇÃO (GRAPHICS ENGINE)
+// ═══════════════════════════════════════════
+class RenderSystem {
+  constructor(canvas, ctx) {
+    this.canvas = canvas;
+    this.ctx = ctx;
   }
 
-  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x+0.5, y+0.5, TILE-1, TILE-1);
+  render(world, entitySystem, cam) {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-  if (type === T.WATER) {
-    const shimmer = (Math.sin((state.tick*0.02) + r*0.5 + c*0.3) + 1) / 2;
-    ctx.fillStyle = `rgba(90,138,168,${0.06 + shimmer*0.05})`;
-    ctx.fillRect(x, y, TILE, TILE);
-  }
+    const ts = GameConfig.TILE_SIZE;
+    const startC = Math.max(0, Math.floor(cam.x / ts));
+    const endC   = Math.min(GameConfig.MAP_COLS - 1, Math.ceil((cam.x + this.canvas.width) / ts));
+    const startR = Math.max(0, Math.floor(cam.y / ts));
+    const endR   = Math.min(GameConfig.MAP_ROWS - 1, Math.ceil((cam.y + this.canvas.height) / ts));
 
-  if (type === T.TALLGRASS) {
-    ctx.strokeStyle = 'rgba(120,150,80,0.4)';
-    ctx.lineWidth = 1;
-    const seedR = (r*7+c*13)%5;
-    for (let i=0;i<3;i++) {
-      const bx = x + 6 + i*9 + (seedR-2);
-      ctx.beginPath();
-      ctx.moveTo(bx, y+TILE-4);
-      ctx.lineTo(bx-2, y+TILE-14);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx+3, y+TILE-4);
-      ctx.lineTo(bx+4, y+TILE-12);
-      ctx.stroke();
-    }
-  }
-
-  if (type === T.FLOWER) {
-    const fx = x+TILE/2, fy = y+TILE/2;
-    const hue = (r*31+c*17)%3;
-    ctx.fillStyle = ['#c47878','#c4b048','#9888c4'][hue];
-    for (let i=0;i<4;i++) {
-      const ang = (i/4)*Math.PI*2;
-      ctx.beginPath();
-      ctx.arc(fx+Math.cos(ang)*3, fy+Math.sin(ang)*3, 2, 0, Math.PI*2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#d4c068';
-    ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, Math.PI*2); ctx.fill();
-  }
-}
-
-function drawAnimal(animal) {
-  const sx = animal.px - state.camera.x;
-  const sy = animal.py - state.camera.y;
-  const def = ANIMAL_TYPES[animal.type];
-  const scale = animal.type === 'rabbit' ? 0.6 : animal.type === 'boar' ? 0.95 : 0.85;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath(); ctx.ellipse(sx, sy+6*scale, 7*scale, 3*scale, 0, 0, Math.PI*2); ctx.fill();
-
-  // corpo
-  ctx.fillStyle = def.color;
-  ctx.beginPath(); ctx.ellipse(sx, sy, 7*scale, 5*scale, 0, 0, Math.PI*2); ctx.fill();
-  // cabeça
-  ctx.beginPath(); ctx.ellipse(sx+6*scale, sy-2*scale, 3.5*scale, 3*scale, 0, 0, Math.PI*2); ctx.fill();
-
-  if (animal.claimed) {
-    ctx.strokeStyle = 'rgba(184,84,64,0.6)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI*2); ctx.stroke();
-  }
-}
-
-function drawResource(res) {
-  const x = res.c * TILE - state.camera.x;
-  const y = res.r * TILE - state.camera.y;
-  const cx = x + TILE/2, cy = y + TILE/2;
-
-  if (res.type === 'tree') {
-    const scale = 0.65 + (res.amount / res.maxAmount) * 0.35;
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath(); ctx.ellipse(cx, cy+TILE*0.32, TILE*0.22, TILE*0.08, 0, 0, Math.PI*2); ctx.fill();
-    // tronco
-    ctx.fillStyle = '#3a2a18';
-    ctx.fillRect(cx-2.5, cy-2, 5, TILE*0.28);
-    // copa
-    ctx.fillStyle = '#2f4a1e';
-    ctx.beginPath(); ctx.arc(cx, cy-TILE*0.12, TILE*0.30*scale, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#3a5a26';
-    ctx.beginPath(); ctx.arc(cx-4, cy-TILE*0.18, TILE*0.18*scale, 0, Math.PI*2); ctx.fill();
-    if (res.claimed) {
-      ctx.strokeStyle = 'rgba(212,160,57,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(cx, cy, TILE*0.42, 0, Math.PI*2); ctx.stroke();
-    }
-  } else if (res.type === 'rock') {
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath(); ctx.ellipse(cx, cy+TILE*0.22, TILE*0.26, TILE*0.1, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#5a564a';
-    ctx.beginPath();
-    ctx.moveTo(cx-TILE*0.26, cy+TILE*0.12);
-    ctx.lineTo(cx-TILE*0.14, cy-TILE*0.18);
-    ctx.lineTo(cx+TILE*0.08, cy-TILE*0.20);
-    ctx.lineTo(cx+TILE*0.26, cy+TILE*0.08);
-    ctx.lineTo(cx+TILE*0.10, cy+TILE*0.20);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#6e6a5c';
-    ctx.beginPath(); ctx.moveTo(cx-TILE*0.14, cy-TILE*0.18); ctx.lineTo(cx+TILE*0.08, cy-TILE*0.2); ctx.lineTo(cx, cy-TILE*0.02); ctx.closePath(); ctx.fill();
-    if (res.claimed) {
-      ctx.strokeStyle = 'rgba(212,160,57,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(cx, cy, TILE*0.42, 0, Math.PI*2); ctx.stroke();
-    }
-  } else if (res.type === 'berry') {
-    ctx.fillStyle = '#33421f';
-    ctx.beginPath(); ctx.arc(cx, cy, TILE*0.24, 0, Math.PI*2); ctx.fill();
-    if (res.amount > 0) {
-      const dots = Math.ceil((res.amount/res.maxAmount)*5);
-      ctx.fillStyle = '#a83838';
-      for (let i=0;i<dots;i++) {
-        const ang = (i/5)*Math.PI*2;
-        ctx.beginPath();
-        ctx.arc(cx+Math.cos(ang)*TILE*0.14, cy+Math.sin(ang)*TILE*0.14, 2, 0, Math.PI*2);
-        ctx.fill();
+    // 1. Desenhar Terreno
+    for (let r = startR; r <= endR; r++) {
+      for (let c = startC; c <= endC; c++) {
+        this.drawTile(r, c, world.map[r][c], cam);
       }
     }
+
+    // 2. Desenhar Paths e Destinos
+    entitySystem.colonists.forEach(col => this.drawPath(col, cam));
+
+    // 3. Desenhar Entidades
+    entitySystem.colonists.forEach(col => this.drawColonist(col, cam));
+  }
+
+  drawTile(r, c, type, cam) {
+    const ts = GameConfig.TILE_SIZE;
+    const x = c * ts - cam.x;
+    const y = r * ts - cam.y;
+
+    this.ctx.fillStyle = GameConfig.COLORS.TERRAIN[type];
+    this.ctx.fillRect(x, y, ts, ts);
+
+    this.ctx.strokeStyle = GameConfig.COLORS.BORDERS[type];
+    this.ctx.lineWidth = 0.5;
+    this.ctx.strokeRect(x + 0.5, y + 0.5, ts - 1, ts - 1);
+
+    if (type === GameConfig.TERRAIN.TREE) {
+      this.ctx.fillStyle = '#2a4a18';
+      this.ctx.beginPath();
+      this.ctx.arc(x + ts / 2, y + ts / 2, ts * 0.28, 0, Math.PI * 2);
+      this.ctx.fill();
+    } else if (type === GameConfig.TERRAIN.ROCK) {
+      this.ctx.fillStyle = '#404040';
+      this.ctx.beginPath();
+      this.ctx.ellipse(x + ts / 2, y + ts * 0.6, ts * 0.28, ts * 0.22, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+    } else if (type === GameConfig.TERRAIN.WATER) {
+      this.ctx.fillStyle = 'rgba(30,80,140,0.3)';
+      this.ctx.fillRect(x + 2, y + 2, ts - 4, ts - 4);
+    }
+  }
+
+  drawPath(col, cam) {
+    if (!col.selected || col.path.length === 0) return;
+    const ts = GameConfig.TILE_SIZE;
+
+    this.ctx.strokeStyle = 'rgba(232,212,138,0.4)';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.setLineDash([4, 4]);
+    this.ctx.beginPath();
+    this.ctx.moveTo(col.px - cam.x, col.py - cam.y);
+    
+    for (const step of col.path) {
+      this.ctx.lineTo(step.c * ts + ts / 2 - cam.x, step.r * ts + ts / 2 - cam.y);
+    }
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+
+    const last = col.path[col.path.length - 1];
+    const dx = last.c * ts + ts / 2 - cam.x;
+    const dy = last.r * ts + ts / 2 - cam.y;
+    this.ctx.strokeStyle = 'rgba(232,212,138,0.7)';
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(dx - 5, dy - 5); this.ctx.lineTo(dx + 5, dy + 5);
+    this.ctx.moveTo(dx + 5, dy - 5); this.ctx.lineTo(dx - 5, dy + 5);
+    this.ctx.stroke();
+  }
+
+  drawColonist(col, cam) {
+    const sx = col.px - cam.x;
+    const sy = col.py - cam.y;
+
+    this.ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    this.ctx.beginPath();
+    this.ctx.ellipse(sx, sy + 10, 7, 4, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    if (col.selected) {
+      this.ctx.strokeStyle = '#e8d48a';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(sx, sy, 13, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
+
+    this.ctx.fillStyle = col.color;
+    this.ctx.beginPath();
+    this.ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    this.ctx.beginPath(); this.ctx.arc(sx - 2, sy - 2, 2, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.beginPath(); this.ctx.arc(sx + 2, sy - 2, 2, 0, Math.PI * 2); this.ctx.fill();
+
+    this.ctx.fillStyle = col.selected ? '#e8d48a' : '#9a8c60';
+    this.ctx.font = `bold 9px 'Courier New'`;
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText(col.name, sx, sy - 14);
   }
 }
 
-function drawBuilding(b) {
-  const x = b.c * TILE - state.camera.x;
-  const y = b.r * TILE - state.camera.y;
-  const def = BUILD_TYPES[b.type];
+// ═══════════════════════════════════════════
+//  6. CORE DA ENGINE (ORQUESTRAÇÃO)
+// ═══════════════════════════════════════════
+class GameEngine {
+  constructor() {
+    this.canvas = document.getElementById('c');
+    this.ctx = this.canvas.getContext('2d');
+    this.gameArea = document.getElementById('game-area');
+    
+    this.speed = 1;
+    this.tick = 0;
+    this.dayTick = 0;
+    this.lastTime = 0;
 
-  if (!b.done) {
-    // Fantasma de construção (em progresso)
-    const progress = b.materialDelivered / b.materialCost;
-    ctx.strokeStyle = b.beingBuilt ? 'rgba(212,160,57,0.8)' : 'rgba(212,160,57,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4,3]);
-    ctx.strokeRect(x+3, y+3, TILE-6, TILE-6);
-    ctx.setLineDash([]);
-    // barra de progresso de material
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(x+4, y+TILE-9, TILE-8, 4);
-    ctx.fillStyle = '#d4a039';
-    ctx.fillRect(x+4, y+TILE-9, (TILE-8)*Math.min(1,progress), 4);
-    return;
+    this.world = new WorldSystem();
+    this.entities = new EntitySystem();
+    this.input = new InputSystem(this.canvas, (r, c) => this.handleMapClick(r, c));
+    this.renderer = new RenderSystem(this.canvas, this.ctx);
+
+    this.initResize();
+    this.initSpeedControls();
+    
+    requestAnimationFrame((now) => this.loop(now));
   }
 
-  switch (b.type) {
-    case 'wall':
-      ctx.fillStyle = '#4a4334';
-      ctx.fillRect(x+1, y+1, TILE-2, TILE-2);
-      ctx.fillStyle = '#5a5240';
-      ctx.fillRect(x+1, y+1, TILE-2, 6);
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.strokeRect(x+1, y+1, TILE-2, TILE-2);
-      break;
-    case 'floor':
-      ctx.fillStyle = '#3a3526';
-      ctx.fillRect(x+1, y+1, TILE-2, TILE-2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-      ctx.strokeRect(x+1, y+1, TILE-2, TILE-2);
-      break;
-    case 'bed':
-      ctx.fillStyle = '#3a3526';
-      ctx.fillRect(x+1, y+1, TILE-2, TILE-2);
-      ctx.fillStyle = '#6a4a30';
-      ctx.fillRect(x+5, y+5, TILE-10, TILE-10);
-      ctx.fillStyle = '#8a6a48';
-      ctx.fillRect(x+5, y+5, TILE-10, 6);
-      break;
-    case 'farm':
-      ctx.fillStyle = '#3d3320';
-      ctx.fillRect(x+1, y+1, TILE-2, TILE-2);
-      ctx.strokeStyle = 'rgba(127,160,80,0.5)';
-      ctx.lineWidth = 1;
-      for (let i=1;i<4;i++) {
-        ctx.beginPath(); ctx.moveTo(x+i*TILE/4, y+2); ctx.lineTo(x+i*TILE/4, y+TILE-2); ctx.stroke();
+  initResize() {
+    const resize = () => {
+      this.canvas.width = this.gameArea.clientWidth;
+      this.canvas.height = this.gameArea.clientHeight;
+      this.input.clampCamera();
+    };
+    resize();
+    window.addEventListener('resize', resize);
+  }
+
+  initSpeedControls() {
+    const setSpeed = (s, btnId) => {
+      this.speed = s;
+      ['btn-pause', 'btn-1x', 'btn-3x'].forEach(id => {
+        document.getElementById(id).classList.remove('active');
+      });
+      document.getElementById(btnId).classList.add('active');
+    };
+
+    document.getElementById('btn-pause').addEventListener('click', () => setSpeed(0, 'btn-pause'));
+    document.getElementById('btn-1x').addEventListener('click', () => setSpeed(1, 'btn-1x'));
+    document.getElementById('btn-3x').addEventListener('click', () => setSpeed(3, 'btn-3x'));
+  }
+
+  handleMapClick(r, c) {
+    if (this.entities.selected) {
+      // Se já tem um colôno ativo, manda ele andar ou troca a seleção caso clique em outro
+      const hitAnother = this.entities.selectAt(r, c);
+      if (!hitAnother) {
+        this.entities.issueMoveOrder(r, c, this.world);
       }
-      break;
-    case 'door':
-      ctx.fillStyle = '#5a4530';
-      ctx.fillRect(x+4, y+1, TILE-8, TILE-2);
-      break;
+    } else {
+      this.entities.selectAt(r, c);
+    }
+  }
+
+  loop(now) {
+    requestAnimationFrame((t) => this.loop(t));
+    
+    this.renderer.render(this.world, this.entities, this.input.cam);
+
+    if (this.speed === 0) return;
+
+    for (let i = 0; i < this.speed; i++) {
+      if (now - this.lastTime < GameConfig.MS_PER_TICK / this.speed) continue;
+      this.lastTime = now;
+
+      this.entities.update(this.world);
+      this.tick++;
+      this.dayTick++;
+
+      if (this.dayTick >= GameConfig.TICKS_PER_DAY) {
+        this.dayTick = 0;
+        const dayEl = document.getElementById('day');
+        dayEl.textContent = parseInt(dayEl.textContent) + 1;
+      }
+      document.getElementById('tick').textContent = this.tick;
+    }
   }
 }
 
-function drawColonist(col) {
-  const sx = col.px - state.camera.x;
-  const sy = col.py - state.camera.y;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(sx, sy+9, 7, 3.2, 0, 0, Math.PI*2); ctx.fill();
-
-  if (col.selected) {
-    ctx.strokeStyle = '#d4a039';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(sx, sy, 13, 0, Math.PI*2); ctx.stroke();
-  }
-
-  // Corpo
-  ctx.fillStyle = col.shirt;
-  ctx.beginPath(); ctx.arc(sx, sy+1, 7, 0, Math.PI*2); ctx.fill();
-
-  // Cabeça
-  ctx.fillStyle = col.skin;
-  ctx.beginPath(); ctx.arc(sx, sy-6, 5.5, 0, Math.PI*2); ctx.fill();
-
-  // Cabelo
-  ctx.fillStyle = col.hair;
-  ctx.beginPath(); ctx.arc(sx, sy-8.5, 5, Math.PI, 0); ctx.fill();
-
-  // Indicador de trabalho (ícone pequeno acima)
-  const jobIcon = {
-    chop: '🪓', mine: '⛏', harvest: '🌿', build: '🔨', hunt: '🏹',
-    gochop:'→', gomine:'→', goharvest:'→', gobuild:'→', gohaul:'→', delivering:'📦', gohunt:'→',
-    eat: '🍞', sleep: '💤', idle: ''
-  }[col.job] || '';
-
-  if (jobIcon && ['chop','mine','harvest','build','eat','sleep','delivering','hunt'].includes(col.job)) {
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(jobIcon, sx, sy-16);
-  }
-
-  // Nome (só se selecionado, pra não poluir)
-  if (col.selected) {
-    ctx.fillStyle = '#d4a039';
-    ctx.font = `600 9px 'JetBrains Mono'`;
-    ctx.textAlign = 'center';
-    ctx.fillText(col.name.split(' ')[0], sx, sy + 22);
-  }
-}
-
-function drawPath(col) {
-  if (!col.selected || col.path.length === 0) return;
-  ctx.strokeStyle = 'rgba(212,160,57,0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([3,3]);
-  ctx.beginPath();
-  ctx.moveTo(col.px - state.camera.x, col.py - state.camera.y);
-  for (const s of col.path) ctx.lineTo(s.c*TILE+TILE/2 - state.camera.x, s.r*TILE+TILE/2 - state.camera.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
-function drawBuildGhost() {
-  if (!state.buildMode || !hoverTile) return;
-  const { r, c } = hoverTile;
-  const x = c*TILE - state.camera.x, y = r*TILE - state.camera.y;
-  const ok = canPlaceBuilding(r, c);
-  ctx.fillStyle = ok ? 'rgba(212,160,57,0.25)' : 'rgba(184,84,64,0.3)';
-  ctx.fillRect(x, y, TILE, TILE);
-  ctx.strokeStyle = ok ? '#d4a039' : '#b85440';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x+1, y+1, TILE-2, TILE-2);
-}
-
-let hoverTile = null;
-
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const startC = Math.max(0, Math.floor(state.camera.x / TILE));
-  const endC   = Math.min(COLS-1, Math.ceil((state.camera.x + canvas.width) / TILE));
-  const startR = Math.max(0, Math.floor(state.camera.y / TILE));
-  const endR   = Math.min(ROWS-1, Math.ceil((state.camera.y + canvas.height) / TILE));
-
-  for (let r = startR; r <= endR; r++)
-    for (let c = startC; c <= endC; c++)
-      drawTile(r, c);
-
-  for (const res of state.resources) {
-    if (res.r < startR-1 || res.r > endR+1 || res.c < startC-1 || res.c > endC+1) continue;
-    drawResource(res);
-  }
-
-  for (const b of state.buildings) drawBuilding(b);
-
-  for (const animal of state.animals) {
-    if (animal.r < startR-1 || animal.r > endR+1 || animal.c < startC-1 || animal.c > endC+1) continue;
-    drawAnimal(animal);
-  }
-
-  for (const col of state.colonists) drawPath(col);
-  for (const col of state.colonists) drawColonist(col);
-
-  drawBuildGhost();
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  INPUT
-// ════════════════════════════════════════════════════════════════════════
-let drag = { active: false, sx:0, sy:0, cx:0, cy:0, moved:false };
-
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-}
-function worldToTile(wx, wy) { return { r: Math.floor(wy/TILE), c: Math.floor(wx/TILE) }; }
-
-canvas.addEventListener('pointerdown', e => {
-  const pos = getPos(e);
-  drag = { active: true, sx: pos.x, sy: pos.y, cx: state.camera.x, cy: state.camera.y, moved: false };
+// Inicializa a Engine assim que a página carrega
+window.addEventListener('DOMContentLoaded', () => {
+  window.Rinwold = new GameEngine();
 });
-
-canvas.addEventListener('pointermove', e => {
-  const pos = getPos(e);
-  const wx = pos.x + state.camera.x, wy = pos.y + state.camera.y;
-  hoverTile = worldToTile(wx, wy);
-
-  if (!drag.active) return;
-  const dx = pos.x - drag.sx, dy = pos.y - drag.sy;
-  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.moved = true;
-  if (drag.moved) {
-    state.camera.x = drag.cx - dx;
-    state.camera.y = drag.cy - dy;
-    clampCamera();
-  }
-});
-
-canvas.addEventListener('pointerup', e => {
-  if (!drag.active) return;
-  drag.active = false;
-  const pos = getPos(e);
-  const wx = pos.x + state.camera.x, wy = pos.y + state.camera.y;
-  const { r, c } = worldToTile(wx, wy);
-
-  if (drag.moved) return;
-
-  // Modo construção ativo
-  if (state.buildMode) {
-    const placed = placeBuildingGhost(state.buildMode, r, c);
-    if (placed) pushAlert(`${BUILD_TYPES[state.buildMode].name} planejado`);
-    return;
-  }
-
-  // Clicou em colôno?
-  const hit = state.colonists.find(col => col.r === r && col.c === c);
-  if (hit) {
-    selectColonist(hit);
-    return;
-  }
-
-  // Clicou no mapa com colôno selecionado → move manualmente
-  if (state.selectedColonist && walkable(r, c)) {
-    const col = state.selectedColonist;
-    col.path = astar(col.r, col.c, r, c);
-    col.job = 'move'; col.jobTarget = null;
-  }
-});
-
-canvas.addEventListener('pointerleave', () => { drag.active = false; });
-
-function selectColonist(col) {
-  state.colonists.forEach(c => c.selected = false);
-  col.selected = true;
-  state.selectedColonist = col;
-  switchTab('info');
-  refreshColonistPanel(col);
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  UI — PAINÉIS
-// ════════════════════════════════════════════════════════════════════════
-const JOB_LABEL = {
-  idle: 'Ocioso', move: 'Andando', chop: 'Cortando madeira', mine: 'Minerando',
-  harvest: 'Colhendo', build: 'Construindo', eat: 'Comendo', sleep: 'Dormindo', hunt: 'Caçando',
-  gochop: 'Indo cortar', gomine: 'Indo minerar', goharvest: 'Indo colher',
-  gobuild: 'Indo construir', gohaul: 'Indo buscar material', delivering: 'Entregando material',
-  goeat: 'Indo comer', gosleep: 'Indo dormir', gohunt: 'Indo caçar',
-};
-
-function refreshColonistPanel(col) {
-  if (document.querySelector('.tab-btn.active').dataset.tab !== 'info') return;
-  const c = document.getElementById('panel-content');
-  c.innerHTML = `
-    <div class="col-head">
-      <div class="col-dot" style="background:${col.shirt}"></div>
-      <span class="col-name">${col.name}</span>
-      <span class="col-job">${JOB_LABEL[col.job] || col.job}</span>
-    </div>
-    <div class="need-row">
-      <span class="need-label">Fome</span>
-      <div class="need-track"><div class="need-fill" style="width:${col.needs.hunger}%;background:${needColor(col.needs.hunger)}"></div></div>
-      <span class="need-val">${Math.round(col.needs.hunger)}</span>
-    </div>
-    <div class="need-row">
-      <span class="need-label">Sono</span>
-      <div class="need-track"><div class="need-fill" style="width:${col.needs.rest}%;background:${needColor(col.needs.rest)}"></div></div>
-      <span class="need-val">${Math.round(col.needs.rest)}</span>
-    </div>
-    <div class="need-row">
-      <span class="need-label">Humor</span>
-      <div class="need-track"><div class="need-fill" style="width:${col.needs.mood}%;background:${needColor(col.needs.mood)}"></div></div>
-      <span class="need-val">${Math.round(col.needs.mood)}</span>
-    </div>
-    <div class="need-row">
-      <span class="need-label">Saúde</span>
-      <div class="need-track"><div class="need-fill" style="width:${col.health}%;background:${needColor(col.health)}"></div></div>
-      <span class="need-val">${Math.round(col.health)}</span>
-    </div>
-    <div class="col-actions">
-      <button class="mini-btn" onclick="centerOnColonist('${col.id}')">📍 Centralizar</button>
-    </div>
-  `;
-}
-
-function centerOnColonist(id) {
-  const col = state.colonists.find(c => c.id === id);
-  if (!col) return;
-  state.camera.x = col.px - canvas.width/2;
-  state.camera.y = col.py - canvas.height/2;
-  clampCamera();
-}
-
-function renderColonistsTab() {
-  const c = document.getElementById('panel-content');
-  c.innerHTML = state.colonists.map(col => `
-    <div class="col-list-row" onclick="selectColonistById('${col.id}')">
-      <div class="col-dot" style="background:${col.shirt}"></div>
-      <span class="col-list-name">${col.name}</span>
-      <span class="col-list-job">${JOB_LABEL[col.job] || col.job}</span>
-      <div class="mini-need" title="Fome"><div class="mini-need-fill" style="width:${col.needs.hunger}%;background:${needColor(col.needs.hunger)}"></div></div>
-    </div>
-  `).join('');
-}
-function selectColonistById(id) {
-  const col = state.colonists.find(c => c.id === id);
-  if (col) selectColonist(col);
-}
-
-function renderBuildTab() {
-  const c = document.getElementById('panel-content');
-  c.innerHTML = `<div class="build-grid">` + Object.entries(BUILD_TYPES).map(([key, def]) => `
-    <div class="build-item ${state.buildMode === key ? 'selected' : ''}" onclick="toggleBuildMode('${key}')">
-      <div class="build-icon">${def.icon}</div>
-      <div class="build-name">${def.name}</div>
-      <div class="build-cost">${def.cost} ${def.materialType === 'wood' ? '🪵' : '🪨'}</div>
-    </div>
-  `).join('') + `</div>`;
-}
-
-function toggleBuildMode(key) {
-  state.buildMode = state.buildMode === key ? null : key;
-  document.getElementById('build-hint').style.display = state.buildMode ? 'block' : 'none';
-  renderBuildTab();
-}
-
-function renderResTab() {
-  const c = document.getElementById('panel-content');
-  const daysOfFood = state.colonists.length ? Math.floor(state.stockpile.food / (state.colonists.length * 6)) : 0;
-  c.innerHTML = `
-    <div class="res-grid">
-      <div class="res-row"><span>🌾 Comida</span><span>${Math.floor(state.stockpile.food)}</span></div>
-      <div class="res-row"><span>🪵 Madeira</span><span>${Math.floor(state.stockpile.wood)}</span></div>
-      <div class="res-row"><span>🪨 Pedra</span><span>${Math.floor(state.stockpile.stone)}</span></div>
-      <div class="res-row"><span>👥 Colônos</span><span>${state.colonists.length}</span></div>
-      <div class="res-row"><span>🦌 Animais</span><span>${state.animals.length}</span></div>
-      <div class="res-row"><span>📅 Reserva</span><span>${daysOfFood}d</span></div>
-    </div>
-    <div style="margin-top:10px; font-size:9.5px; color:var(--ink-faint); line-height:1.5;">
-      Dificuldade do dia: ${state.difficulty.toFixed(2)}x — eventos ficam mais frequentes com o tempo.
-    </div>
-  `;
-}
-
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  if (name === 'info') {
-    if (state.selectedColonist) refreshColonistPanel(state.selectedColonist);
-    else document.getElementById('panel-content').innerHTML = `<div class="panel-empty">Toque em um colôno no mapa<br>para ver seus detalhes.</div>`;
-  } else if (name === 'colonists') renderColonistsTab();
-  else if (name === 'build') renderBuildTab();
-  else if (name === 'res') renderResTab();
-}
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-// ════════════════════════════════════════════════════════════════════════
-//  VELOCIDADE & LOOP PRINCIPAL
-// ════════════════════════════════════════════════════════════════════════
-function setSpeed(s) {
-  state.speed = s;
-  ['s0','s1','s2','s3'].forEach(id => document.getElementById('btn-'+id).classList.remove('active'));
-  const map = { 0:'s0', 1:'s1', 3:'s2', 6:'s3' };
-  document.getElementById('btn-'+map[s]).classList.add('active');
-}
-
-let lastFrame = 0;
-function loop(now) {
-  requestAnimationFrame(loop);
-  if (!lastFrame) lastFrame = now;
-  const dt = Math.min(33, now - lastFrame) / 16.67; // normaliza pra ~1 a 60fps
-  lastFrame = now;
-
-  render();
-  if (state.speed > 0) {
-    gameUpdate(dt * state.speed);
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  INICIALIZAÇÃO
-// ════════════════════════════════════════════════════════════════════════
-function init() {
-  state.map = generateMap();
-  state.resources = generateResources();
-  spawnInitialColonists();
-  spawnAnimals();
-
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  // Centraliza câmera na base
-  const cr = Math.floor(ROWS/2), cc = Math.floor(COLS/2);
-  state.camera.x = cc*TILE - canvas.width/2;
-  state.camera.y = cr*TILE - canvas.height/2;
-  clampCamera();
-
-  pushAlert('Colônia fundada. Boa sorte.');
-  requestAnimationFrame(loop);
-}
-
-init();
-
 </script>
 </body>
 </html>
